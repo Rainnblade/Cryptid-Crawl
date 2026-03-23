@@ -27,6 +27,8 @@ clock = pygame.time.Clock()
 START = "start"
 MAP = "map"
 MINIMAP = "minimap"
+BATTLE = "battle"
+
 
 state = START
 
@@ -83,6 +85,14 @@ def draw_map():
 
     pygame.draw.rect(screen, (0,0,255), (px,py,TILE_SIZE,TILE_SIZE))
 
+# Draw Battle Scrren
+def draw_battle():
+    screen.fill((120,0,0))
+    text = font.render("BATTLE!", True, (255,255,255))
+    screen.blit(text, (WIDTH//2 - text.get_width()//2, 200))
+    
+    text2 = pygame.font.SysFont(None, 32).render("Press ESC to return", True, (255,255,255))
+    screen.blit(text2, (WIDTH//2 - text2.get_width()//2, 300))
 
 
 # Draw Mini Map
@@ -152,22 +162,28 @@ while True:
 
                 if event.key == pygame.K_m:
                     state = MINIMAP
+                if event.key == pygame.K_b:
+                    state = BATTLE
 
-                if event.key == pygame.K_UP:
+                if event.key == pygame.K_w:
                     player_pos[1] -= 1
 
-                if event.key == pygame.K_DOWN:
+                if event.key == pygame.K_s:
                     player_pos[1] += 1
 
-                if event.key == pygame.K_LEFT:
+                if event.key == pygame.K_a:
                     player_pos[0] -= 1
 
-                if event.key == pygame.K_RIGHT:
+                if event.key == pygame.K_d:
                     player_pos[0] += 1
 
                 # Keep player inside map
                 player_pos[0] = max(0, min(MAP_WIDTH-1, player_pos[0]))
                 player_pos[1] = max(0, min(MAP_HEIGHT-1, player_pos[1]))
+            # BATTLE controls
+            elif state == BATTLE:
+                if event.key == pygame.K_ESCAPE:
+                    state = MAP
 
 
             # MINIMAP controls
@@ -182,6 +198,9 @@ while True:
 
     elif state == MAP:
         draw_map()
+
+    elif state == BATTLE:
+        draw_battle()
 
     elif state == MINIMAP:
         draw_minimap()

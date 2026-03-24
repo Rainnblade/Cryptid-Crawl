@@ -69,25 +69,25 @@ def draw_map():
     a blue square at the current player_pos.
     """
 
-    screen.fill((0,100,0))
+    screen.fill((30, 30, 30))
 
     for y in range(MAP_HEIGHT):
         for x in range(MAP_WIDTH):
 
             rect = pygame.Rect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE)
 
-            pygame.draw.rect(screen, (0,150,0), rect)
+            pygame.draw.rect(screen, (80, 80, 80), rect)
             pygame.draw.rect(screen, (0,0,0), rect, 1)
 
     # Draw player
     px = player_pos[0]*TILE_SIZE
     py = player_pos[1]*TILE_SIZE
 
-    pygame.draw.rect(screen, (0,0,255), (px,py,TILE_SIZE,TILE_SIZE))
+    pygame.draw.rect(screen, (220, 220, 220), (px,py,TILE_SIZE,TILE_SIZE))
 
 # Draw Battle Scrren
 def draw_battle():
-    screen.fill((120,0,0))
+    screen.fill((20, 20, 20))
     text = font.render("BATTLE!", True, (255,255,255))
     screen.blit(text, (WIDTH//2 - text.get_width()//2, 200))
     
@@ -118,14 +118,14 @@ def draw_minimap():
                 mini_tile
             )
 
-            pygame.draw.rect(screen,(80,80,80),rect)
+            pygame.draw.rect(screen,(60,60,60),rect)
             pygame.draw.rect(screen,(0,0,0),rect,1)
 
     # Player marker
     px = start_x + player_pos[0]*mini_tile
     py = start_y + player_pos[1]*mini_tile
 
-    pygame.draw.rect(screen,(0,0,255),(px,py,mini_tile,mini_tile))
+    pygame.draw.rect(screen,(220,220,220),(px,py,mini_tile,mini_tile))
 
     text = pygame.font.SysFont(None,32).render("Press ESC to close map",True,(255,255,255))
     screen.blit(text,(WIDTH//2-text.get_width()//2,100))

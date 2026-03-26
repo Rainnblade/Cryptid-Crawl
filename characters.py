@@ -35,7 +35,7 @@ move specific notes
 - stuff hurts more if the person has a hunter's mark and the attacker has the move in their set (blood hunter and ranger)
 """
 
-character = {
+characters = {
     'Bigfoot':{
         'health':25,
         'temp_health':25,

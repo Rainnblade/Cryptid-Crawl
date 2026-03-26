@@ -62,7 +62,7 @@ def draw_start():
     Render the start screen.
 
     Fills the screen with a dark background and displays
-    a centered message prompting the user to press ENTER        to begin the game.
+    a centered message prompting the user to press ENTER to begin the game.
     """
 
     screen.fill((30, 30, 30))
@@ -166,7 +166,70 @@ def draw_map():
 
     pygame.draw.rect(screen, (220, 220, 220), (px,py,TILE_SIZE,TILE_SIZE))
 
-# Draw Battle Scrren
+    draw_party_panel()
+
+# Draw Party Panel (right sidebar on map screen)
+def draw_party_panel():
+    """
+    Render the party panel on the right side of the map screen.
+
+    Displays each party member's name, current HP, and a health bar.
+    This pulls live stat data from the characters dictionary.
+    """
+    # Panel Size
+    panel_x = MAP_WIDTH * TILE_SIZE  # 500
+    panel_width = WIDTH - panel_x    # 300
+
+    panel_font = pygame.font.SysFont(None, 26) # Character Name Font Size
+    label_font = pygame.font.SysFont(None, 22) # HP Label Font Size
+
+    # Panel background
+    pygame.draw.rect(screen, (15, 15, 15), (panel_x, 0, panel_width, HEIGHT))
+    pygame.draw.line(screen, (60, 60, 60), (panel_x, 0), (panel_x, HEIGHT), 2)
+
+    title = panel_font.render("Party", True, (200, 200, 200))
+    screen.blit(title, (panel_x + panel_width // 2 - title.get_width() // 2, 10)) # Positioning of text
+
+    SLOT_HEIGHT = 80
+    for i, name in enumerate(party): # Numbers each character name and indexes them.
+        slot_y = 40 + i * (SLOT_HEIGHT + 10)
+
+        stats = characters.get(name, {})
+        hp_max = stats.get('health', 1)
+        hp_cur = stats.get('temp_health', hp_max)
+
+        # Slot background
+        pygame.draw.rect(screen, (30, 30, 30), (panel_x + 10, slot_y, panel_width - 20, SLOT_HEIGHT))
+        pygame.draw.rect(screen, (60, 60, 60), (panel_x + 10, slot_y, panel_width - 20, SLOT_HEIGHT), 1)
+
+        # Slot number + name
+        slot_label = panel_font.render(f"{i+1}. {name}", True, (220, 220, 220))
+        screen.blit(slot_label, (panel_x + 16, slot_y + 8))
+
+        # HP text
+        hp_text = label_font.render(f"HP: {hp_cur} / {hp_max}", True, (160, 160, 160))
+        screen.blit(hp_text, (panel_x + 16, slot_y + 32))
+
+        # HP bar
+        bar_x = panel_x + 16
+        bar_y = slot_y + 52
+        bar_w = panel_width - 32
+        bar_h = 12
+        ratio = hp_cur / hp_max if hp_max > 0 else 0
+
+        if ratio > 0.5:
+            bar_color = (60, 180, 60)
+        elif ratio > 0.25:
+            bar_color = (200, 160, 40)
+        else:
+            bar_color = (180, 50, 50)
+
+        pygame.draw.rect(screen, (50, 50, 50), (bar_x, bar_y, bar_w, bar_h))
+        pygame.draw.rect(screen, bar_color, (bar_x, bar_y, int(bar_w * ratio), bar_h))
+        pygame.draw.rect(screen, (80, 80, 80), (bar_x, bar_y, bar_w, bar_h), 1)
+
+
+# Draw Battle Screen
 def draw_battle():
     screen.fill((20, 20, 20))
     text = font.render("BATTLE!", True, (255,255,255))

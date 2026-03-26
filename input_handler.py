@@ -2,6 +2,9 @@
 # Handles all player keyboard input for Cryptid Crawl.
 # Import this module wherever input is needed — map, combat, menus.
 
+# This is currently out of use since we decided to go for a graphic approach
+# This can be used for terminal based inputs if we decide to go that route
+
 # --- Directional mappings for map navigation ---
 # Players can type full words, single letters, or WASDt
 DIRECTIONAL_NAMES = {

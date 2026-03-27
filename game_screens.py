@@ -271,6 +271,9 @@ def draw_minimap():
 
     pygame.draw.rect(screen,(220,220,220),(px,py,mini_tile,mini_tile))
 
+    area_name = pygame.font.SysFont(None, 40).render("Area Name", True, (255, 220, 150))
+    screen.blit(area_name, (WIDTH//2 - area_name.get_width()//2, 60))
+
     text = pygame.font.SysFont(None,32).render("Press ESC to close map",True,(255,255,255))
     screen.blit(text,(WIDTH//2-text.get_width()//2,100))
 

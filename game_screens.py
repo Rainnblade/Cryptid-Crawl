@@ -231,6 +231,12 @@ def draw_party_panel():
 
 # Draw Battle Screen
 def draw_battle():
+    """
+    Render the battle screen.
+
+    Displays a placeholder battle screen with a prompt to return to the map.
+    Press ESC to exit back to the map.
+    """
     screen.fill((20, 20, 20))
     text = font.render("BATTLE!", True, (255,255,255))
     screen.blit(text, (WIDTH//2 - text.get_width()//2, 200))
@@ -241,7 +247,14 @@ def draw_battle():
 
 # Draw Mini Map
 def draw_minimap():
+    """
+    Render the minimap screen.
 
+    Displays a grid view of the full map centered on the screen,
+    with the player's current position marked. Also shows the current area name.
+    Press ESC to close and return to the map.
+    Will include surrounding areas soon.
+    """
     screen.fill((20,20,20))
 
     mini_tile = 20
@@ -279,7 +292,8 @@ def draw_minimap():
 
 
 # Game loop
-while True:
+if __name__ == "__main__":
+ while True:
     """
     Main game loop.
 

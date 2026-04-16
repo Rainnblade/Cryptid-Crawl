@@ -1,24 +1,27 @@
 """
-
 This script creates a basic RPG framework with four game states:
 - START: Displays a start screen
 - CHARACTER_SELECT: Grid-based party selection screen (choose 3 of 5 cryptids)
-- MAP: Shows a grid-based map where the player can move
+- MAP: Shows a grid-based map where the player can move (player is currently displayed as a white square.)
 - MINIMAP: Displays a mini map when M is pressed
-- BATTLE: Displays a placeholder battle screen
+- BATTLE: Displays a battle screen. Can be triggered by pressing B on a red battle tile
 
 Controls:
 - ENTER: Start the game / select or deselect a character
 - SPACE: Confirm party selection (when 3 are chosen)
 - WASD: Navigate character select grid / move player on the map
 - M: Open minimap
-- B: Enter battle screen
+- B: Enter battle (when standing on a red battle tile)
+- 1-4: Select a move during battle
 - ESC: Return to map (from battle or minimap)
 """
-
+# Imports
 import pygame
 import sys
-from characters import characters
+import random
+from characters import characters, enemies
+from combat_state import damage_calc_player, damage_calc_enemy, turn_order, update_stat
+
 
 pygame.init()
 
@@ -55,6 +58,131 @@ font = pygame.font.SysFont(None, 48)
 
 # Create map grid
 game_map = [[0 for x in range(MAP_WIDTH)] for y in range(MAP_HEIGHT)]
+
+# Battle tile — red dot on the map where the Bear battle is.
+BATTLE_TILE = [3, 3]
+bear_defeated = False # Bear starts alive.
+
+# Combat state
+combat_enemy = 'Bear'
+combat_enemy_hp = 0
+combat_order = []
+combat_turn_idx = 0
+combat_log = []
+combat_phase = 'player_choose'  # 'player_choose', 'win', 'lose'
+combat_menu = 'main'            # 'main', 'moves', 'info'
+
+
+
+def start_combat(enemy_name):
+    """
+    Initiates combat against the given enemy and begin the first turn.
+
+    Sets up turn order using speed values, resets the enemy's HP, and
+    automatically performs the first turn if it belongs to the enemy.
+    """
+    global combat_enemy, combat_enemy_hp, combat_order, combat_turn_idx, combat_log, combat_phase
+    combat_enemy = enemy_name
+    combat_enemy_hp = enemies[enemy_name]['health']
+    roster = [enemy_name] + list(party)
+    combat_order = turn_order(roster)
+    combat_turn_idx = -1
+    combat_log = [f"A hostile {enemy_name} appeared!"]
+    combat_phase = 'player_choose'
+    _next_turn()
+
+
+def _next_turn():
+    """
+    Advances to the next alive party member's turn.
+
+    Enemy turns are performed automatically. Stops when it reaches a living
+    party member (sets phase to 'player_choose') or sets phase to 'lose'
+    if all party members HP is dropped to 0.
+
+    To be used with start_combat()/do_player_move()
+    """
+    global combat_turn_idx, combat_phase, combat_menu
+
+    for _ in range(len(combat_order) + 1):
+        combat_turn_idx = (combat_turn_idx + 1) % len(combat_order)
+        current = combat_order[combat_turn_idx]
+
+        if current == combat_enemy:
+            if combat_enemy_hp > 0:
+                _do_enemy_action()
+                if all(characters[p]['temp_health'] <= 0 for p in party):
+                    combat_phase = 'lose'
+                    return
+        else:
+            if characters[current]['temp_health'] > 0:
+                combat_phase = 'player_choose'
+                combat_menu = 'main'
+                return
+
+    combat_phase = 'lose'
+
+
+def _do_enemy_action():
+    """
+    Resolves the enemy's turn by picking a random move in their moveset and applying damage
+    to a randomly chosen party member.
+
+    To be used with _next_turn()
+    """
+    move_name = random.choice(enemies[combat_enemy]['moves'])[0]
+    targets = [p for p in party if characters[p]['temp_health'] > 0]
+    if not targets:
+        return
+    target = random.choice(targets)
+
+    result = damage_calc_enemy(combat_enemy, target, move_name)
+
+    if isinstance(result, int):
+        update_stat(target, result, 'temp_health', False)
+        combat_log.append(f"{combat_enemy} used {move_name}!")
+        combat_log.append(f"{target} took {result} damage.")
+    elif result == 'missed':
+        combat_log.append(f"{combat_enemy} used {move_name} — missed!")
+    else:
+        combat_log.append(str(result))
+
+    if len(combat_log) > 8: # Caps combat log at 8 entries, can be changed.
+        combat_log.pop(0)
+
+
+def do_player_move(move_name):
+    """
+    Performs the player's selected move and then advances the turn.
+
+    Handles hit/miss/special results from damage_calc_player and checks for
+    enemy defeat after applying damage. Currently only the bear enemy is being tracked.
+    """
+    global combat_enemy_hp, combat_phase, bear_defeated
+
+    current = combat_order[combat_turn_idx]
+    result = damage_calc_player(current, combat_enemy, move_name)
+
+    if isinstance(result, int):
+        combat_enemy_hp -= result
+        combat_log.append(f"{current} used {move_name}!")
+        combat_log.append(f"{combat_enemy} took {result} damage.")
+        if combat_enemy_hp <= 0:
+            combat_enemy_hp = 0
+            combat_log.append(f"{combat_enemy} was defeated!")
+            combat_phase = 'win'
+            bear_defeated = True
+            return
+    elif result == 'missed':
+        combat_log.append(f"{current} used {move_name} — missed!")
+    else:
+        combat_log.append(str(result))
+
+    if len(combat_log) > 8:
+        combat_log.pop(0)
+
+    _next_turn()
+
 
 # Draw Start Screen
 def draw_start():
@@ -145,9 +273,10 @@ def draw_character_select():
 def draw_map():
     """
     Render the map screen.
+
     Draws a grid-based map using TILE_SIZE, MAP_WIDTH, and MAP_HEIGHT.
-    Each tile is outlined for visibility. Also renders the player as
-    a blue square at the current player_pos.
+    Each tile is outlined for visibility. A red tile marks the Bear encounter
+    spot. The player is rendered as a white square at the current player_pos.
     """
 
     screen.fill((30, 30, 30))
@@ -159,6 +288,17 @@ def draw_map():
 
             pygame.draw.rect(screen, (80, 80, 80), rect)
             pygame.draw.rect(screen, (0,0,0), rect, 1)
+
+    # Draws red dot battle tile if bear hasn't been defeated
+    if not bear_defeated:
+        bx = BATTLE_TILE[0] * TILE_SIZE
+        by = BATTLE_TILE[1] * TILE_SIZE
+        pygame.draw.rect(screen, (160, 30, 30), (bx, by, TILE_SIZE, TILE_SIZE))
+        pygame.draw.rect(screen, (0, 0, 0), (bx, by, TILE_SIZE, TILE_SIZE), 1)
+        dot_font = pygame.font.SysFont(None, 22)
+        dot_label = dot_font.render("B", True, (255, 180, 180))
+        screen.blit(dot_label, (bx + TILE_SIZE//2 - dot_label.get_width()//2,
+                                 by + TILE_SIZE//2 - dot_label.get_height()//2))
 
     # Draw player
     px = player_pos[0]*TILE_SIZE
@@ -234,15 +374,103 @@ def draw_battle():
     """
     Render the battle screen.
 
-    Displays a placeholder battle screen with a prompt to return to the map.
-    Press ESC to exit back to the map.
+    Left area displays enemy name and HP bar, combat log, and move selection menu
+    for the active party member. Right area of GUI displays party panel showing live HP.
+    Number keys 1-4 to select option and moves. ESC to return map after a win or loss.
     """
     screen.fill((20, 20, 20))
-    text = font.render("BATTLE!", True, (255,255,255))
-    screen.blit(text, (WIDTH//2 - text.get_width()//2, 200))
-    
-    text2 = pygame.font.SysFont(None, 32).render("Press ESC to return", True, (255,255,255))
-    screen.blit(text2, (WIDTH//2 - text2.get_width()//2, 300))
+
+    combat_font = pygame.font.SysFont(None, 36)
+    small_font = pygame.font.SysFont(None, 26)
+    tiny_font = pygame.font.SysFont(None, 22)
+
+    # Enemy Area of screen
+    enemy_max_hp = enemies[combat_enemy]['health']
+
+    enemy_label = combat_font.render(combat_enemy, True, (220, 80, 80))
+    screen.blit(enemy_label, (30, 25))
+
+    bar_x, bar_y, bar_w, bar_h = 30, 65, 320, 16
+    ratio = max(0, combat_enemy_hp / enemy_max_hp)
+    pygame.draw.rect(screen, (50, 50, 50), (bar_x, bar_y, bar_w, bar_h))
+    pygame.draw.rect(screen, (180, 50, 50), (bar_x, bar_y, int(bar_w * ratio), bar_h))
+    pygame.draw.rect(screen, (80, 80, 80), (bar_x, bar_y, bar_w, bar_h), 1)
+
+    hp_text = small_font.render(f"HP: {max(0, combat_enemy_hp)} / {enemy_max_hp}", True, (160, 160, 160))
+    screen.blit(hp_text, (bar_x, bar_y + 22))
+
+    # Combat log
+    log_x, log_y, log_w, log_h = 30, 120, 450, 170
+    pygame.draw.rect(screen, (28, 28, 28), (log_x, log_y, log_w, log_h))
+    pygame.draw.rect(screen, (60, 60, 60), (log_x, log_y, log_w, log_h), 1)
+
+    for i, msg in enumerate(combat_log[-5:]):
+        msg_surf = tiny_font.render(msg, True, (200, 200, 200))
+        screen.blit(msg_surf, (log_x + 8, log_y + 8 + i * 30))
+
+    # Different states of the combat menu
+    if combat_phase == 'player_choose':
+        current = combat_order[combat_turn_idx]
+        moves = characters[current]['moves']
+
+        turn_label = small_font.render(f"{current}'s turn:", True, (220, 220, 100))
+        screen.blit(turn_label, (30, 310))
+
+        COL_NAME = 30
+        COL_PWR  = 220
+        COL_USES = 280
+        COL_TYPE = 340
+
+        if combat_menu == 'main':
+            btn1 = small_font.render("1.  Moves", True, (200, 200, 200))
+            btn2 = small_font.render("2.  Move Info", True, (200, 200, 200))
+            btn3 = small_font.render("3.  Flee", True, (200, 200, 200))
+            screen.blit(btn1, (30, 350))
+            screen.blit(btn2, (30, 385))
+            screen.blit(btn3, (30, 420))
+
+        elif combat_menu == 'moves':
+            for i, move in enumerate(moves):
+                col = i % 2
+                row = i // 2
+                move_surf = small_font.render(f"{i+1}. {move[0]}", True, (200, 200, 200))
+                screen.blit(move_surf, (30 + col * 230, 350 + row * 34))
+            back = tiny_font.render("B — back", True, (100, 100, 100))
+            screen.blit(back, (30, 460))
+
+        elif combat_menu == 'info':
+            # Header — each label drawn at its fixed column x
+            screen.blit(tiny_font.render("Move", True, (140, 140, 140)), (COL_NAME, 345))
+            screen.blit(tiny_font.render("Pwr",  True, (140, 140, 140)), (COL_PWR,  345))
+            screen.blit(tiny_font.render("Uses", True, (140, 140, 140)), (COL_USES, 345))
+            screen.blit(tiny_font.render("Type", True, (140, 140, 140)), (COL_TYPE, 345))
+            pygame.draw.line(screen, (60, 60, 60), (30, 362), (460, 362), 1)
+
+            for i, move in enumerate(moves):
+                # move format: [name, power, accuracy, uses_max, uses_temp, duration, type]
+                row_y = 368 + i * 26
+                screen.blit(tiny_font.render(f"{i+1}. {move[0]}", True, (200, 200, 200)), (COL_NAME, row_y))
+                screen.blit(tiny_font.render(str(move[1]), True, (200, 200, 200)),         (COL_PWR,  row_y))
+                screen.blit(tiny_font.render(str(move[4]), True, (200, 200, 200)),         (COL_USES, row_y))
+                screen.blit(tiny_font.render(move[6],      True, (200, 200, 200)),         (COL_TYPE, row_y))
+
+            back = tiny_font.render("B — back", True, (100, 100, 100))
+            screen.blit(back, (30, 460))
+
+    elif combat_phase == 'win':
+        win_surf = combat_font.render("Victory!", True, (100, 220, 100))
+        screen.blit(win_surf, (30, 320))
+        hint = small_font.render("Press ESC to return to map", True, (160, 160, 160))
+        screen.blit(hint, (30, 365))
+
+    elif combat_phase == 'lose':
+        lose_surf = combat_font.render("Defeated...", True, (220, 80, 80))
+        screen.blit(lose_surf, (30, 320))
+        hint = small_font.render("Press ESC to return to map", True, (160, 160, 160))
+        screen.blit(hint, (30, 365))
+
+    # Party panel
+    draw_party_panel()
 
 
 # Draw Mini Map
@@ -277,6 +505,12 @@ def draw_minimap():
 
             pygame.draw.rect(screen,(60,60,60),rect)
             pygame.draw.rect(screen,(0,0,0),rect,1)
+
+    # Battle tile marker on minimap
+    if not bear_defeated:
+        bx = start_x + BATTLE_TILE[0] * mini_tile
+        by = start_y + BATTLE_TILE[1] * mini_tile
+        pygame.draw.rect(screen, (160, 30, 30), (bx, by, mini_tile, mini_tile))
 
     # Player marker
     px = start_x + player_pos[0]*mini_tile
@@ -346,7 +580,9 @@ if __name__ == "__main__":
                 if event.key == pygame.K_m:
                     state = MINIMAP
                 if event.key == pygame.K_b:
-                    state = BATTLE
+                    if player_pos == BATTLE_TILE and not bear_defeated:
+                        start_combat('Bear')
+                        state = BATTLE
 
                 if event.key == pygame.K_w:
                     player_pos[1] -= 1
@@ -363,11 +599,37 @@ if __name__ == "__main__":
                 # Keep player inside map
                 player_pos[0] = max(0, min(MAP_WIDTH-1, player_pos[0]))
                 player_pos[1] = max(0, min(MAP_HEIGHT-1, player_pos[1]))
+
             # BATTLE controls
             elif state == BATTLE:
                 if event.key == pygame.K_ESCAPE:
                     state = MAP
 
+                if combat_phase == 'player_choose':
+                    current = combat_order[combat_turn_idx]
+                    moves = characters[current]['moves']
+
+                    if combat_menu == 'main':
+                        if event.key == pygame.K_1:
+                            combat_menu = 'moves'
+                        elif event.key == pygame.K_2:
+                            combat_menu = 'info'
+                        elif event.key == pygame.K_3:
+                            state = MAP
+
+                    elif combat_menu == 'moves':
+                        if event.key == pygame.K_b:
+                            combat_menu = 'main'
+                        else:
+                            move_keys = [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4]
+                            for i, key in enumerate(move_keys):
+                                if event.key == key and i < len(moves):
+                                    do_player_move(moves[i][0])
+                                    break
+
+                    elif combat_menu == 'info':
+                        if event.key == pygame.K_b:
+                            combat_menu = 'main'
 
             # MINIMAP controls
             elif state == MINIMAP:

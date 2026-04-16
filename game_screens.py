@@ -32,6 +32,12 @@ pygame.display.set_caption("Cryptid Crawl")
 
 clock = pygame.time.Clock()
 
+# Sprites for character select, eventually combat?
+_mothman_raw = pygame.image.load('sprites/mothman.png').convert()
+sprites = {
+    'Mothman': pygame.transform.scale(_mothman_raw, (130, 130))
+}
+
 # Game states
 START = "start"
 CHARACTER_SELECT = "character_select"
@@ -239,10 +245,13 @@ def draw_character_select():
         border_color = (220, 220, 220) if i == select_index else (60, 60, 60)
         border_width = 3 if i == select_index else 1
 
-        # Placeholder box — replace the next two lines with screen.blit(sprites[name], (x, y)) when sprites are ready
-        pygame.draw.rect(screen, (45, 45, 45), (x, y, BOX_SIZE, BOX_SIZE))
-        placeholder = name_font.render(name, True, (90, 90, 90))
-        screen.blit(placeholder, (x + BOX_SIZE//2 - placeholder.get_width()//2, y + BOX_SIZE//2 - placeholder.get_height()//2))
+        # Use sprite if available, otherwise draw placeholder box
+        if name in sprites:
+            screen.blit(sprites[name], (x, y))
+        else:
+            pygame.draw.rect(screen, (45, 45, 45), (x, y, BOX_SIZE, BOX_SIZE))
+            placeholder = name_font.render(name, True, (90, 90, 90))
+            screen.blit(placeholder, (x + BOX_SIZE//2 - placeholder.get_width()//2, y + BOX_SIZE//2 - placeholder.get_height()//2))
 
         pygame.draw.rect(screen, border_color, (x, y, BOX_SIZE, BOX_SIZE), border_width)
 

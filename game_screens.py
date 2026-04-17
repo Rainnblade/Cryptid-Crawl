@@ -33,9 +33,20 @@ pygame.display.set_caption("Cryptid Crawl")
 clock = pygame.time.Clock()
 
 # Sprites for character select, eventually combat?
+
 _mothman_raw = pygame.image.load('sprites/mothman.png').convert()
+_jersey_devil_raw = pygame.image.load('sprites/jersey_devil.png').convert()
+_chupacabra_raw = pygame.image.load('sprites/chupacabra.png').convert()
+_ogua_raw = pygame.image.load('sprites/ogua.png').convert()
+_bigfoot_raw = pygame.image.load('sprites/bigfoot.png').convert()
+_selkie_raw = pygame.image.load('sprites/selkie.png').convert()
 sprites = {
-    'Mothman': pygame.transform.scale(_mothman_raw, (130, 130))
+    'Mothman': pygame.transform.scale(_mothman_raw, (130, 130)),
+    'Jersey Devil': pygame.transform.scale(_jersey_devil_raw, (130, 130)),
+    'Chupakabra': pygame.transform.scale(_chupacabra_raw, (130, 130)),
+    'Ogua': pygame.transform.scale(_ogua_raw, (130, 130)),
+    'Bigfoot': pygame.transform.scale(_bigfoot_raw, (130, 130)),
+    'Selkie': pygame.transform.scale(_selkie_raw, (130, 130)),
 }
 
 # Game states
@@ -48,7 +59,7 @@ BATTLE = "battle"
 state = START
 
 # Character select
-ROSTER = ['Bigfoot', 'Mothman', 'Jersey Devil', 'Selkie', 'Chupakabra']
+ROSTER = ['Bigfoot', 'Mothman', 'Jersey Devil', 'Selkie', 'Chupakabra', 'Ogua']
 select_index = 0
 party = []
 
@@ -210,7 +221,7 @@ def draw_character_select():
     """
     Render the character select screen.
 
-    Displays a grid of 5 (currently) character boxes where the player can browse and select
+    Displays a grid of 6 (currently) character boxes where the player can browse and select
     a party of 3 cryptids. Use WASD to navigate the boxes, ENTER to select or deselect a character into your party,
     and SPACE to confirm when 3 have been chosen.
     """
@@ -229,21 +240,21 @@ def draw_character_select():
     row2_y = row1_y + BOX_SIZE + GAP + 20  # +20 for name label below box
 
     row1_x = WIDTH//2 - (3*BOX_SIZE + 2*GAP)//2
-    row2_x = WIDTH//2 - (2*BOX_SIZE + GAP)//2
 
     positions = [
         (row1_x + 0*(BOX_SIZE+GAP), row1_y),
         (row1_x + 1*(BOX_SIZE+GAP), row1_y),
         (row1_x + 2*(BOX_SIZE+GAP), row1_y),
-        (row2_x + 0*(BOX_SIZE+GAP), row2_y),
-        (row2_x + 1*(BOX_SIZE+GAP), row2_y),
+        (row1_x + 0*(BOX_SIZE+GAP), row2_y),
+        (row1_x + 1*(BOX_SIZE+GAP), row2_y),
+        (row1_x + 2*(BOX_SIZE+GAP), row2_y),
     ]
 
     for i, name in enumerate(ROSTER):
         x, y = positions[i]
 
-        border_color = (220, 220, 220) if i == select_index else (60, 60, 60)
-        border_width = 3 if i == select_index else 1
+        border_color = (212, 175, 55) if i == select_index else (60, 60, 60) # Character Selection Border
+        border_width = 6 if i == select_index else 1
 
         # Use sprite if available, otherwise draw placeholder box
         if name in sprites:

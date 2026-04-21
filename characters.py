@@ -1,40 +1,21 @@
 """
-possible town names
-- duskfield
-- greywick
-- Pebbleford
--Faefair
-- Faehold
-- Basinshire
-
-things a stat block needs
-name
-health
-defense (out of 20)
-speed (out of 50?)
-moves (move, power (_/100), accuracy (_/100), uses_max (how much to reset to at the end of fight),
-        uses_temp (use during combat, duration (how long a spell lasts), type (physical or elemental)
-possible base modifiers
-
-move specific notes
-- shield works like detect from pokemon where it reflects everything until that pokemon's next turn
-- combat has to be kept track of in terms of how many rounds have passed for rage and maybe others
-- lay on hands heals a target for a certain amount of  (that 25 is healing a target for a quarter of their health no matter their max)
-- entangle doesnt do damage but keeps the person from doing physical attacks (can do ranged ones)
-- fog cloud brings up general evasion for target
--blood rite is 100% acceracy if the enemy has been marked but is only a 50% if not
--last stand works the same as blood right but the character' health needs to be witin the last like 5th or something (in the red)
-- chill touch has an increased crit chance
--decoy makes the frogman's status hidden and they can't be hit
-- sneak attack fails unless frogman's status is hidden
-- guidance makes the target's next move a sure fire hit (smart players would use it on the jersey devil and then chill touch
-- maybe add a thing that flurry of blows can hit multiple times or somethin so it can do more damage
-- shocking grasp can cause the target to be paralyzed for their next move
-- intimidate does the same thing as shocking grasp but doesnt do damage and has a greater chance to hit
-- longstrider increases speed of a target person (makes them harder to hit)
-- stuff hurts more if the person has a hunter's mark and the attacker has the move in their set (blood hunter and ranger)
+This file exists to store all the base stats and moves of player and enemy characters
 """
 
+"""
+dictionary containing all player character stat blocks
+
+format
+name: name of character
+    health: base health of enemy
+    temp_health: the health manipulated in game through battle and items
+    defense: defense used in battle calculations (out of 20)
+    attack: attack power of character used in battle calculations
+    speed: speed used to determine turn order when combat starts
+    moves (move, power (_/100), accuracy (_/100), uses_max (how much to reset to at the end of fight),
+            uses_temp (use during combat), duration (how long a spell lasts), type (physical or elemental): the list
+            of moves a character can do in battle
+    effect: location for effects to be applied for future move calculations if they apply"""
 characters = {
     'Bigfoot':{
         'health':25,
@@ -105,7 +86,7 @@ characters = {
         'defense':11,
         'attack':8,
         'speed':28,
-        'moves':[['cure wounds',0,100,20,20,0,'physical'],['spare the dying',0,50,5,5,0,'physical'],['guidance',0,50,5,5,0,'physical'],['sacred flame',60,70,20,20,0,'physical']],
+        'moves':[['cure wounds',0,100,20,20,0,'physical'],['spare the dying',0,50,5,5,0,'physical'],['guidance',0,50,5,5,0,'physical'],['sacred flame',60,70,20,20,0,'fire']],
         'effect':None
     },
     'Ogua':{
@@ -129,12 +110,34 @@ characters = {
 }
 
 """
-enemy move notes
-- pack support makes it so if the enemy list includes 1 or more coyotes then bite hits harder
+dictionary for all enemy character stat blocks
+possible enemies
+    - bear
+    - humans 
+    - humans with armor
+    - humans with gun
+    - rabid dogs
+    - badger
+    - coyotes
+    - goat
+    - big ass rat
+
+format
+name: name of character
+    health: base health of enemy
+    temp_health: the health manipulated in game through battle and items
+    defense: defense used in battle calculations (out of 20)
+    attack: attack power of character used in battle calculations
+    speed: speed used to determine turn order when combat starts
+    moves (move, power (_/100), accuracy (_/100), duration (how long a spell lasts), type (physical or elemental): the list
+            of moves a character can do in battle
+    effect: location for effects to be applied for future move calculations if they apply
 """
+
 enemies = {
     'Bear':{
         'health':34,
+        'temp_health':34,
         'defense':11,
         'attack':12,
         'speed':30,
@@ -143,14 +146,16 @@ enemies = {
     },
     'Human':{
         'health':4,
+        'temp_health':4,
         'defense':10,
         'attack':4,
         'speed':20,
-        'moves':[['bat',60,70,0,'physical']],
+        'moves':[['bat',60,70,0,'physical'],['first aid',0,100,1,'physical']],
         'effect':None
     },
     'Coyote':{
         'health':7,
+        'temp_health':7,
         'defense':13,
         'attack':8,
         'speed':28,
@@ -159,6 +164,7 @@ enemies = {
     },
     'Human with gun':{
         'health':9,
+        'temp_health':9,
         'defense':9,
         'attack':12,
         'speed':19,

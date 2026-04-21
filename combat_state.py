@@ -25,9 +25,10 @@ def damage_calc_player(guy,angy_enemy,move):
         if i[0] == move:
             guy_acc = i[2]
 
-    if move == 'lay on hands':
-        damage = int(characters[angy_enemy]['health'] * 0.5)
-        return round(damage)
+    if angy_enemy in characters:
+        if move == 'lay on hands':
+            damage = int(characters[angy_enemy]['health'] * 0.5)
+            return round(damage)
 
     if move=='blood rite' and enemies[angy_enemy]['effect'] !='marked':
         guy_acc = 50
@@ -131,14 +132,15 @@ def damage_calc_enemy(attacker,defender,move):
             if enemies[attacker]['effect'] == 'entangled' and i[-1] == 'physical':
                 return f"{attacker} is stuck and can't move"
 
-    if move == 'first aid':
-        damage = int(enemies[defender]['health'] * 0.25)
-        return round(damage)
+    if defender in enemies:
+        if move == 'first aid':
+            damage = int(enemies[defender]['health'] * 0.25)
+            return round(damage)
 
-    if move == 'pack support':
-        damage = int(enemies[defender]['health'] * 0.25)
-        return round(damage)
-
+        if move == 'pack support':
+            damage = int(enemies[defender]['health'] * 0.25)
+            return round(damage)
+            
     attacker_attack = enemies[attacker]['attack']
     defender_def = characters[defender]['defense']
     attacker_pow = 0

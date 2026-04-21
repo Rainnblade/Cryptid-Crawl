@@ -76,9 +76,16 @@ font = pygame.font.SysFont(None, 48)
 # Create map grid
 game_map = [[0 for x in range(MAP_WIDTH)] for y in range(MAP_HEIGHT)]
 
-# Battle tile — red dot on the map where the Bear battle is.
-BATTLE_TILE = [3, 3]
-bear_defeated = False # Bear starts alive.
+# Choose random spawn locations for enemies
+def _pick_enemy_tiles():
+    """Picks a random non-overlapping spawn tile for each enemy, avoiding where the player starts."""
+    avoid_spawn = {(5, 5)}
+    candidates = [(x, y) for x in range(MAP_WIDTH) for y in range(MAP_HEIGHT) if (x, y) not in avoid_spawn]
+    chosen = random.sample(candidates, 2)
+    return {'Bear': list(chosen[0]), 'Coyote': list(chosen[1])}
+
+enemy_tiles = _pick_enemy_tiles()
+defeated_enemies = set()
 
 # Combat state
 combat_enemy = 'Bear'
@@ -173,9 +180,9 @@ def do_player_move(move_name):
     Performs the player's selected move and then advances the turn.
 
     Handles hit/miss/special results from damage_calc_player and checks for
-    enemy defeat after applying damage. Currently only the bear enemy is being tracked.
+    enemy defeat after applying damage.
     """
-    global combat_enemy_hp, combat_phase, bear_defeated
+    global combat_enemy_hp, combat_phase
 
     current = combat_order[combat_turn_idx]
     result = damage_calc_player(current, combat_enemy, move_name)
@@ -188,7 +195,7 @@ def do_player_move(move_name):
             combat_enemy_hp = 0
             combat_log.append(f"{combat_enemy} was defeated!")
             combat_phase = 'win'
-            bear_defeated = True
+            defeated_enemies.add(combat_enemy)
             return
     elif result == 'missed':
         combat_log.append(f"{current} used {move_name} — missed!")
@@ -295,8 +302,8 @@ def draw_map():
     Render the map screen.
 
     Draws a grid-based map using TILE_SIZE, MAP_WIDTH, and MAP_HEIGHT.
-    Each tile is outlined for visibility. A red tile marks the Bear encounter
-    spot. The player is rendered as a white square at the current player_pos.
+    Each tile is outlined for visibility. Red tiles mark enemy encounter spots.
+    The player is rendered as a white square at the current player_pos.
     """
 
     screen.fill((30, 30, 30))
@@ -309,16 +316,17 @@ def draw_map():
             pygame.draw.rect(screen, (80, 80, 80), rect)
             pygame.draw.rect(screen, (0,0,0), rect, 1)
 
-    # Draws red dot battle tile if bear hasn't been defeated
-    if not bear_defeated:
-        bx = BATTLE_TILE[0] * TILE_SIZE
-        by = BATTLE_TILE[1] * TILE_SIZE
-        pygame.draw.rect(screen, (160, 30, 30), (bx, by, TILE_SIZE, TILE_SIZE))
-        pygame.draw.rect(screen, (0, 0, 0), (bx, by, TILE_SIZE, TILE_SIZE), 1)
-        dot_font = pygame.font.SysFont(None, 22)
-        dot_label = dot_font.render("B", True, (255, 180, 180))
-        screen.blit(dot_label, (bx + TILE_SIZE//2 - dot_label.get_width()//2,
-                                 by + TILE_SIZE//2 - dot_label.get_height()//2))
+    # Draws enemy tiles for undefeated enemies
+    dot_font = pygame.font.SysFont(None, 22)
+    for enemy_name, tile in enemy_tiles.items():
+        if enemy_name not in defeated_enemies:
+            bx = tile[0] * TILE_SIZE
+            by = tile[1] * TILE_SIZE
+            pygame.draw.rect(screen, (160, 30, 30), (bx, by, TILE_SIZE, TILE_SIZE))
+            pygame.draw.rect(screen, (0, 0, 0), (bx, by, TILE_SIZE, TILE_SIZE), 1)
+            dot_label = dot_font.render(enemy_name[0], True, (255, 180, 180))
+            screen.blit(dot_label, (bx + TILE_SIZE//2 - dot_label.get_width()//2,
+                                     by + TILE_SIZE//2 - dot_label.get_height()//2))
 
     # Draw player
     px = player_pos[0]*TILE_SIZE
@@ -526,11 +534,12 @@ def draw_minimap():
             pygame.draw.rect(screen,(60,60,60),rect)
             pygame.draw.rect(screen,(0,0,0),rect,1)
 
-    # Battle tile marker on minimap
-    if not bear_defeated:
-        bx = start_x + BATTLE_TILE[0] * mini_tile
-        by = start_y + BATTLE_TILE[1] * mini_tile
-        pygame.draw.rect(screen, (160, 30, 30), (bx, by, mini_tile, mini_tile))
+    # Enemy tile markers on minimap
+    for enemy_name, tile in enemy_tiles.items():
+        if enemy_name not in defeated_enemies:
+            bx = start_x + tile[0] * mini_tile
+            by = start_y + tile[1] * mini_tile
+            pygame.draw.rect(screen, (160, 30, 30), (bx, by, mini_tile, mini_tile))
 
     # Player marker
     px = start_x + player_pos[0]*mini_tile
@@ -600,9 +609,11 @@ if __name__ == "__main__":
                 if event.key == pygame.K_m:
                     state = MINIMAP
                 if event.key == pygame.K_b:
-                    if player_pos == BATTLE_TILE and not bear_defeated:
-                        start_combat('Bear')
-                        state = BATTLE
+                    for enemy_name, tile in enemy_tiles.items():
+                        if player_pos == tile and enemy_name not in defeated_enemies:
+                            start_combat(enemy_name)
+                            state = BATTLE
+                            break
 
                 if event.key == pygame.K_w:
                     player_pos[1] -= 1

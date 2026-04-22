@@ -16,9 +16,9 @@ Controls:
 - ESC: Return to map (from battle or minimap)
 """
 # Imports
-import pygame
 import sys
 import random
+import pygame
 from characters import characters, enemies
 from combat_state import damage_calc_player, damage_calc_enemy, turn_order, update_stat
 
@@ -26,10 +26,15 @@ from combat_state import damage_calc_player, damage_calc_enemy, turn_order, upda
 pygame.init()
 
 # Window setup
-WIDTH, HEIGHT = 800, 600
+#: Window width in pixels.
+WIDTH = 800
+#: Window height in pixels.
+HEIGHT = 600
+#: The main pygame display surface.
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Cryptid Crawl")
 
+#: Pygame clock used to cap the frame rate at 60 FPS.
 clock = pygame.time.Clock()
 
 # Sprites for character select, eventually combat?
@@ -40,6 +45,7 @@ _chupacabra_raw = pygame.image.load('sprites/chupacabra.png').convert()
 _ogua_raw = pygame.image.load('sprites/ogua.png').convert()
 _bigfoot_raw = pygame.image.load('sprites/bigfoot.png').convert()
 _selkie_raw = pygame.image.load('sprites/selkie.png').convert()
+#: Scaled sprite surfaces keyed by character name (130x130 px).
 sprites = {
     'Mothman': pygame.transform.scale(_mothman_raw, (130, 130)),
     'Jersey Devil': pygame.transform.scale(_jersey_devil_raw, (130, 130)),
@@ -50,30 +56,45 @@ sprites = {
 }
 
 # Game states
+#: Game state constant: start screen.
 START = "start"
+#: Game state constant: character selection screen.
 CHARACTER_SELECT = "character_select"
+#: Game state constant: main map view.
 MAP = "map"
+#: Game state constant: minimap overlay.
 MINIMAP = "minimap"
+#: Game state constant: battle screen.
 BATTLE = "battle"
 
+#: Current game state; controls which screen is rendered each frame.
 state = START
 
 # Character select
+#: Names of all selectable cryptid characters shown on the character select screen.
 ROSTER = ['Bigfoot', 'Mothman', 'Jersey Devil', 'Selkie', 'Chupakabra', 'Ogua']
+#: Index into ROSTER of the currently highlighted character box.
 select_index = 0
+#: List of up to 3 selected character names forming the player's party.
 party = []
 
 # Player
+#: Player's current [x, y] tile position on the map.
 player_pos = [5, 5]
 
 # Map settings
+#: Pixel size of each map tile.
 TILE_SIZE = 50
+#: Number of tile columns in the map grid.
 MAP_WIDTH = 10
+#: Number of tile rows in the map grid.
 MAP_HEIGHT = 10
 
+#: Default system font at size 48 for primary UI text.
 font = pygame.font.SysFont(None, 48)
 
 # Create map grid
+#: 2D grid representing the map; each cell defaults to 0 (empty tile).
 game_map = [[0 for x in range(MAP_WIDTH)] for y in range(MAP_HEIGHT)]
 
 # Choose random spawn locations for enemies
@@ -84,17 +105,26 @@ def _pick_enemy_tiles():
     chosen = random.sample(candidates, 2)
     return {'Bear': list(chosen[0]), 'Coyote': list(chosen[1])}
 
+#: Maps each enemy name to its [x, y] spawn tile on the map.
 enemy_tiles = _pick_enemy_tiles()
+#: Set of enemy names that have been defeated this run.
 defeated_enemies = set()
 
 # Combat state
+#: Name of the enemy currently being fought.
 combat_enemy = 'Bear'
+#: Enemy's remaining HP during the current battle.
 combat_enemy_hp = 0
+#: Turn order list (character names sorted by speed) for the current battle.
 combat_order = []
+#: Index into combat_order indicating whose turn it currently is.
 combat_turn_idx = 0
+#: Rolling list of recent combat messages displayed on the battle screen.
 combat_log = []
-combat_phase = 'player_choose'  # 'player_choose', 'win', 'lose'
-combat_menu = 'main'            # 'main', 'moves', 'info'
+#: Current combat phase: ``'player_choose'``, ``'win'``, or ``'lose'``.
+combat_phase = 'player_choose'
+#: Active combat submenu: ``'main'``, ``'moves'``, or ``'info'``.
+combat_menu = 'main'
 
 
 
@@ -556,133 +586,121 @@ def draw_minimap():
 
 # Game loop
 if __name__ == "__main__":
- while True:
-    """
-    Main game loop.
+    while True:
+        for event in pygame.event.get():
 
-    Handles:
-    - Event processing (quit, key presses)
-    - Game state transitions
-    - Player movement and boundary constraints
-    - Rendering the appropriate screen based on current state
-    """
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
 
+            if event.type == pygame.KEYDOWN:
 
-    for event in pygame.event.get():
+                # START screen
+                if state == START:
+                    if event.key == pygame.K_RETURN:
+                        state = CHARACTER_SELECT
 
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
-
-        if event.type == pygame.KEYDOWN:
-
-            # START screen
-            if state == START:
-                if event.key == pygame.K_RETURN:
-                    state = CHARACTER_SELECT
-
-            # CHARACTER SELECT controls
-            elif state == CHARACTER_SELECT:
-                if event.key == pygame.K_a:
-                    select_index = (select_index - 1) % len(ROSTER)
-                if event.key == pygame.K_d:
-                    select_index = (select_index + 1) % len(ROSTER)
-                if event.key == pygame.K_w:
-                    if select_index >= 3:
-                        select_index -= 3
-                if event.key == pygame.K_s:
-                    if select_index < 3:
-                        select_index = min(select_index + 3, len(ROSTER) - 1)
-                if event.key == pygame.K_RETURN:
-                    name = ROSTER[select_index]
-                    if name in party:
-                        party.remove(name)
-                    elif len(party) < 3:
-                        party.append(name)
-                if event.key == pygame.K_SPACE:
-                    if len(party) == 3:
-                        state = MAP
-
-            # MAP controls
-            elif state == MAP:
-
-                if event.key == pygame.K_m:
-                    state = MINIMAP
-                if event.key == pygame.K_b:
-                    for enemy_name, tile in enemy_tiles.items():
-                        if player_pos == tile and enemy_name not in defeated_enemies:
-                            start_combat(enemy_name)
-                            state = BATTLE
-                            break
-
-                if event.key == pygame.K_w:
-                    player_pos[1] -= 1
-
-                if event.key == pygame.K_s:
-                    player_pos[1] += 1
-
-                if event.key == pygame.K_a:
-                    player_pos[0] -= 1
-
-                if event.key == pygame.K_d:
-                    player_pos[0] += 1
-
-                # Keep player inside map
-                player_pos[0] = max(0, min(MAP_WIDTH-1, player_pos[0]))
-                player_pos[1] = max(0, min(MAP_HEIGHT-1, player_pos[1]))
-
-            # BATTLE controls
-            elif state == BATTLE:
-                if event.key == pygame.K_ESCAPE:
-                    state = MAP
-
-                if combat_phase == 'player_choose':
-                    current = combat_order[combat_turn_idx]
-                    moves = characters[current]['moves']
-
-                    if combat_menu == 'main':
-                        if event.key == pygame.K_1:
-                            combat_menu = 'moves'
-                        elif event.key == pygame.K_2:
-                            combat_menu = 'info'
-                        elif event.key == pygame.K_3:
+                # CHARACTER SELECT controls
+                elif state == CHARACTER_SELECT:
+                    if event.key == pygame.K_a:
+                        select_index = (select_index - 1) % len(ROSTER)
+                    if event.key == pygame.K_d:
+                        select_index = (select_index + 1) % len(ROSTER)
+                    if event.key == pygame.K_w:
+                        if select_index >= 3:
+                            select_index -= 3
+                    if event.key == pygame.K_s:
+                        if select_index < 3:
+                            select_index = min(select_index + 3, len(ROSTER) - 1)
+                    if event.key == pygame.K_RETURN:
+                        name = ROSTER[select_index]
+                        if name in party:
+                            party.remove(name)
+                        elif len(party) < 3:
+                            party.append(name)
+                    if event.key == pygame.K_SPACE:
+                        if len(party) == 3:
                             state = MAP
 
-                    elif combat_menu == 'moves':
-                        if event.key == pygame.K_b:
-                            combat_menu = 'main'
-                        else:
-                            move_keys = [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4]
-                            for i, key in enumerate(move_keys):
-                                if event.key == key and i < len(moves):
-                                    do_player_move(moves[i][0])
-                                    break
+                # MAP controls
+                elif state == MAP:
 
-                    elif combat_menu == 'info':
-                        if event.key == pygame.K_b:
-                            combat_menu = 'main'
+                    if event.key == pygame.K_m:
+                        state = MINIMAP
+                    if event.key == pygame.K_b:
+                        for enemy_name, tile in enemy_tiles.items():
+                            if player_pos == tile and enemy_name not in defeated_enemies:
+                                start_combat(enemy_name)
+                                state = BATTLE
+                                break
 
-            # MINIMAP controls
-            elif state == MINIMAP:
-                if event.key == pygame.K_ESCAPE:
-                    state = MAP
+                    if event.key == pygame.K_w:
+                        player_pos[1] -= 1
 
+                    if event.key == pygame.K_s:
+                        player_pos[1] += 1
 
-    # Draw screens
-    if state == START:
-        draw_start()
+                    if event.key == pygame.K_a:
+                        player_pos[0] -= 1
 
-    elif state == CHARACTER_SELECT:
-        draw_character_select()
+                    if event.key == pygame.K_d:
+                        player_pos[0] += 1
 
-    elif state == MAP:
-        draw_map()
+                    # Keep player inside map
+                    player_pos[0] = max(0, min(MAP_WIDTH - 1, player_pos[0]))
+                    player_pos[1] = max(0, min(MAP_HEIGHT - 1, player_pos[1]))
 
-    elif state == BATTLE:
-        draw_battle()
+                # BATTLE controls
+                elif state == BATTLE:
+                    if event.key == pygame.K_ESCAPE:
+                        state = MAP
 
-    elif state == MINIMAP:
-        draw_minimap()
+                    if combat_phase == 'player_choose':
+                        current = combat_order[combat_turn_idx]
+                        moves = characters[current]['moves']
 
-    pygame.display.flip()
-    clock.tick(60)
+                        if combat_menu == 'main':
+                            if event.key == pygame.K_1:
+                                combat_menu = 'moves'
+                            elif event.key == pygame.K_2:
+                                combat_menu = 'info'
+                            elif event.key == pygame.K_3:
+                                state = MAP
+
+                        elif combat_menu == 'moves':
+                            if event.key == pygame.K_b:
+                                combat_menu = 'main'
+                            else:
+                                move_keys = [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4]
+                                for i, key in enumerate(move_keys):
+                                    if event.key == key and i < len(moves):
+                                        do_player_move(moves[i][0])
+                                        break
+
+                        elif combat_menu == 'info':
+                            if event.key == pygame.K_b:
+                                combat_menu = 'main'
+
+                # MINIMAP controls
+                elif state == MINIMAP:
+                    if event.key == pygame.K_ESCAPE:
+                        state = MAP
+
+        # Draw screens
+        if state == START:
+            draw_start()
+
+        elif state == CHARACTER_SELECT:
+            draw_character_select()
+
+        elif state == MAP:
+            draw_map()
+
+        elif state == BATTLE:
+            draw_battle()
+
+        elif state == MINIMAP:
+            draw_minimap()
+
+        pygame.display.flip()
+        clock.tick(60)
